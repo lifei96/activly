@@ -1,6 +1,6 @@
-# activly
+# Activ.ly
 
-activly
+Activ.ly app repo
 
 ## Getting Started
 
