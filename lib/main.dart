@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:card_settings/card_settings.dart';
 
 void main() => runApp(MyApp());
 
@@ -17,10 +18,10 @@ class MyApp extends StatelessWidget {
         // "hot reload" (press "r" in the console where you ran "flutter run",
         // or press Run > Flutter Hot Reload in IntelliJ). Notice that the
         // counter didn't reset back to zero; the application is not restarted.
-        primaryColor: Colors.orange,
-        accentColor: Colors.orangeAccent,
+        primaryColor: Colors.orange[800],
+        accentColor: Colors.orange[700],
         backgroundColor: Colors.white,
-        buttonColor: Colors.orange,
+        buttonColor: Colors.orange[700],
         buttonTheme: ButtonThemeData(
           textTheme: ButtonTextTheme.primary,
         ),
@@ -34,8 +35,8 @@ class MyApp extends StatelessWidget {
             bottom: TabBar(
               tabs: [
                 Tab(icon: Icon(Icons.calendar_today)),
-                Tab(icon: Icon(Icons.comment)),
                 Tab(icon: Icon(Icons.directions_run)),
+                Tab(icon: Icon(Icons.settings)),
               ],
             ),
             title: Text('Activ.ly'),
@@ -43,8 +44,8 @@ class MyApp extends StatelessWidget {
           body: TabBarView(
             children: [
               createCalendarTabBarView(),
-              Icon(Icons.directions_transit),
-              Icon(Icons.directions_bike),
+              Icon(Icons.directions_run),
+              createSettingsTabBarView(),
             ],
           ),
         ),
@@ -52,19 +53,90 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  Column createCalendarTabBarView() {
-    return Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+  Form createCalendarTabBarView() {
+    return Form(
+      key: Key('calendar_form'),
+      child: CardSettings(
         children: <Widget>[
-          RaisedButton(
-            onPressed: importGoogleCalender,
-            child: Text('Import Google Calendar'),
+          CardSettingsHeader(
+            label: 'Calendar',
+          ),
+          CardSettingsButton(
+            label: 'Sign in with Google',
+            backgroundColor: Colors.white,
+            textColor: Colors.orange[700],
+            bottomSpacing: 4.0,
+            onPressed: () {
+
+            },
           )
         ],
-      );
+      ),
+    );
+  }
+
+  Form createSettingsTabBarView() {
+    return Form(
+      key: Key('settings_form'),
+      child: CardSettings(
+        children: <Widget>[
+          CardSettingsHeader(
+            label: 'Workout Preference',
+          ),
+          CardSettingsSwitch(
+            label: 'Inside?',
+            key: Key('switch_inside'),
+            initialValue: false,
+            onSaved: (bool value) {
+
+            },
+          ),
+          CardSettingsNumberPicker(
+            label: 'Times/Week',
+            key: Key('picker_times'),
+            initialValue: 5,
+            min: 0,
+            max: 7,
+            onSaved: (int value) {
+
+            },
+          ),
+          CardSettingsInt(
+            label: 'Length/Time',
+            key: Key('int_length'),
+            initialValue: 60,
+            unitLabel: 'minutes',
+            maxLength: 3,
+            onSaved: (int value) {
+
+            },
+          ),
+          CardSettingsInt(
+            label: 'Reminder',
+            key: Key('int_remind'),
+            initialValue: 30,
+            unitLabel: 'minutes before workout',
+            maxLength: 3,
+            onSaved: (int value) {
+
+            },
+          ),
+          CardSettingsButton(
+            label: 'Save',
+            backgroundColor: Colors.orange[700],
+            textColor: Colors.white,
+            bottomSpacing: 4.0,
+            onPressed: () {
+
+            },
+          )
+        ],
+      ),
+    );
   }
 
   void importGoogleCalender() {
 
   }
+
 }
