@@ -7,6 +7,27 @@ void main() => runApp(MyApp());
 
 class MyApp extends StatelessWidget {
   // This widget is the root of your application.
+
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  Future<FirebaseUser> _handleSignIn() async {
+    GoogleSignInAccount googleUser = await _googleSignIn.signIn();
+    GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+    FirebaseUser user = await _auth.signInWithGoogle(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+    print("signed in " + user.displayName);
+    return user;
+  }
+
+  Future<void> _handleSignOut() async {
+    await _googleSignIn.signOut();
+    await _auth.signOut();
+    print("signed out");
+  }
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -56,6 +77,7 @@ class MyApp extends StatelessWidget {
   }
 
   Form createCalendarTabBarView() {
+    var signedIn = _googleSignIn.currentUser == null? false : true;
     return Form(
       key: Key('calendar_form'),
       child: CardSettings(
@@ -69,9 +91,24 @@ class MyApp extends StatelessWidget {
             textColor: Colors.orange[700],
             bottomSpacing: 4.0,
             onPressed: () {
-
+              _handleSignIn()
+                .then((FirebaseUser user) => {print(user)})
+                .catchError((e) => print(e));
             },
-          )
+            visible: !signedIn,
+          ),
+          CardSettingsButton(
+            label: 'Sign out',
+            backgroundColor: Colors.white,
+            textColor: Colors.red,
+            bottomSpacing: 4.0,
+            onPressed: () {
+              _handleSignOut()
+                .then((result) => print('signed out'))
+                .catchError((e) => print(e));
+            },
+            visible: signedIn,
+          ),
         ],
       ),
     );
