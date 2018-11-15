@@ -120,7 +120,7 @@ class _HomePageState extends State<HomePage> {
         body: TabBarView(
           children: [
             createCalendarTabBarView(),
-            Icon(Icons.directions_run),
+            createWorkoutTabBarView(),
             createSettingsTabBarView(),
           ],
         ),
@@ -175,6 +175,30 @@ class _HomePageState extends State<HomePage> {
                   });
                 })
                 .catchError((e) => print(e));
+            },
+            visible: signedIn,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Form createWorkoutTabBarView() {
+    var signedIn = _currentUser == null? false : true;
+    return Form(
+      key: Key('workout_form'),
+      child: CardSettings(
+        children: <Widget>[
+          CardSettingsHeader(
+            label: 'Workout Schedule',
+          ),
+          CardSettingsButton(
+            label: 'Go Schedule!',
+            backgroundColor: Colors.white,
+            textColor: Colors.orange[700],
+            bottomSpacing: 4.0,
+            onPressed: () {
+
             },
             visible: signedIn,
           ),
