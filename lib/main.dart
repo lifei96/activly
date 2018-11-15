@@ -92,7 +92,7 @@ class MyApp extends StatelessWidget {
             bottomSpacing: 4.0,
             onPressed: () {
               _handleSignIn()
-                .then((FirebaseUser user) => {print(user)})
+                .then((FirebaseUser user) => print(user))
                 .catchError((e) => print(e));
             },
             visible: !signedIn,
