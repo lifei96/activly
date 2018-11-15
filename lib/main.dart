@@ -135,10 +135,10 @@ class _HomePageState extends State<HomePage> {
       child: CardSettings(
         children: <Widget>[
           CardSettingsHeader(
-            label: 'Calendar',
+            label: '${(signedIn ? _currentUser.displayName + '\'s ' : '')}Calendar',
           ),
           CardSettingsButton(
-            label: 'Current account: ' + (signedIn ? _currentUser.email : ''),
+            label: 'Current account: ${(signedIn ? _currentUser.email : '')}',
             backgroundColor: Colors.white,
             bottomSpacing: 0.0,
             onPressed: null,
