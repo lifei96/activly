@@ -21,6 +21,8 @@ dependencies:
   cupertino_icons: ^0.1.2
   card_settings: ^1.2.2
   firebase_auth: ^0.6.2+1
+  googleapis: ^0.52.0+1
+  googleapis_auth: ^0.2.6
   google_sign_in: ^3.2.4
   shared_preferences: ^0.4.3
 

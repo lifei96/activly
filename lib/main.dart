@@ -1,8 +1,11 @@
 import 'package:card_settings/card_settings.dart';
+import 'package:googleapis/calendar/v3.dart' as calendar_api;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import 'google_http_client.dart';
 
 void main() => runApp(MyApp());
 
@@ -59,7 +62,7 @@ class _HomePageState extends State<HomePage> {
       'profile',
       'email',
       'openid',
-      'https://www.googleapis.com/auth/calendar.events',
+      'https://www.googleapis.com/auth/calendar',
     ],
   );
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -120,6 +123,37 @@ class _HomePageState extends State<HomePage> {
     await _googleSignIn.signOut();
     await _auth.signOut();
     print("signed out");
+  }
+
+  _showSchedule() async {
+    final authHeaders = await _googleSignIn.currentUser.authHeaders;
+    final httpClient = GoogleHttpClient(authHeaders);
+
+    final startDateTime = DateTime.now().add(Duration(days: 1));
+    final startDate = DateTime(
+      startDateTime.year,
+      startDateTime.month,
+      startDateTime.day,
+    );
+
+    print('startDate: $startDate');
+    print(startDate.timeZoneName);
+
+    for (int i = 0; i < 7; i++) {
+      calendar_api.CalendarApi(httpClient).events.list(
+        'primary',
+        singleEvents: true,
+        orderBy: "startTime",
+        timeMin: startDate.toUtc().add(Duration(days: i)),
+        timeMax: startDate.toUtc().add(Duration(days: i + 1))
+      ).then((calendar_api.Events events) {
+        print(events.items.length);
+        events.items.forEach((calendar_api.Event event) {
+          print(event.summary);
+          print(event.start.dateTime.toLocal());
+        });
+      }).catchError((calendar_api.Error error) => print(error.toString()));
+    }
   }
 
   @override
@@ -239,7 +273,7 @@ class _HomePageState extends State<HomePage> {
             textColor: Colors.orange[700],
             bottomSpacing: 4.0,
             onPressed: () {
-
+              _showSchedule();
             },
             visible: signedIn,
           ),
@@ -279,7 +313,7 @@ class _HomePageState extends State<HomePage> {
             },
           ),
           CardSettingsInt(
-            label: 'Length/Time',
+            label: 'Length',
             key: Key('int_length'),
             initialValue: _length,
             unitLabel: 'minutes',
