@@ -1,7 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:card_settings/card_settings.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() => runApp(MyApp());
 
@@ -43,6 +44,16 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
 
+  static final String _insideName = 'inside';
+  static final String _freqName = 'freq';
+  static final String _lengthName = 'length';
+  static final String _reminderName = 'reminder';
+
+  static final bool _insideDefault = false;
+  static final int _freqDefault = 5;
+  static final int _lengthDefault = 60;
+  static final int _reminderDefault = 30;
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'profile',
@@ -54,6 +65,31 @@ class _HomePageState extends State<HomePage> {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   FirebaseUser _currentUser;
+
+  bool _inside = _insideDefault;
+  int _freq = _freqDefault;
+  int _length = _lengthDefault;
+  int _reminder = _reminderDefault;
+
+  _loadPreference() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _inside = (prefs.getBool(_insideName) ?? _insideDefault);
+      _freq = (prefs.getInt(_freqName) ?? _freqDefault);
+      _length = (prefs.getInt(_lengthName) ?? _lengthDefault);
+      _reminder = (prefs.getInt(_reminderName) ?? _reminderDefault);
+    });
+    print('preference loaded');
+  }
+
+  _savePreference() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    prefs.setBool(_insideName, _inside);
+    prefs.setInt(_freqName, _freq);
+    prefs.setInt(_lengthName, _length);
+    prefs.setInt(_reminderName, _reminder);
+    print('preference saved');
+  }
 
   Future<FirebaseUser> _trySignIn() async {
     GoogleSignInAccount googleUser = await _googleSignIn.signInSilently();
@@ -86,15 +122,9 @@ class _HomePageState extends State<HomePage> {
     print("signed out");
   }
 
-
   @override
-  Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance
-    // as done by the _increment method above.
-    // The Flutter framework has been optimized to make rerunning
-    // build methods fast, so that you can just rebuild anything that
-    // needs updating rather than having to individually change
-    // instances of widgets.
+  void initState() {
+    super.initState();
     if (_currentUser == null) {
       _trySignIn().then((user) {
         if (user != null) {
@@ -104,6 +134,17 @@ class _HomePageState extends State<HomePage> {
         }
       });
     }
+    _loadPreference();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // This method is rerun every time setState is called, for instance
+    // as done by the _increment method above.
+    // The Flutter framework has been optimized to make rerunning
+    // build methods fast, so that you can just rebuild anything that
+    // needs updating rather than having to individually change
+    // instances of widgets.
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -218,39 +259,47 @@ class _HomePageState extends State<HomePage> {
           CardSettingsSwitch(
             label: 'Inside?',
             key: Key('switch_inside'),
-            initialValue: false,
-            onSaved: (bool value) {
-
+            initialValue: _inside,
+            onChanged: (bool value) {
+              setState(() {
+                _inside = value;
+              });
             },
           ),
           CardSettingsNumberPicker(
             label: 'Times/Week',
             key: Key('picker_times'),
-            initialValue: 5,
+            initialValue: _freq,
             min: 0,
             max: 7,
-            onSaved: (int value) {
-
+            onChanged: (int value) {
+              setState(() {
+                _freq = value;
+              });
             },
           ),
           CardSettingsInt(
             label: 'Length/Time',
             key: Key('int_length'),
-            initialValue: 60,
+            initialValue: _length,
             unitLabel: 'minutes',
             maxLength: 3,
-            onSaved: (int value) {
-
+            onChanged: (int value) {
+              setState(() {
+                _length = value;
+              });
             },
           ),
           CardSettingsInt(
             label: 'Reminder',
             key: Key('int_remind'),
-            initialValue: 30,
+            initialValue: _reminder,
             unitLabel: 'minutes before workout',
             maxLength: 3,
-            onSaved: (int value) {
-
+            onChanged: (int value) {
+              setState(() {
+                _reminder = value;
+              });
             },
           ),
           CardSettingsButton(
@@ -259,7 +308,7 @@ class _HomePageState extends State<HomePage> {
             textColor: Colors.white,
             bottomSpacing: 4.0,
             onPressed: () {
-
+              _savePreference();
             },
           )
         ],
