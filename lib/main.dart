@@ -1,9 +1,11 @@
+import 'dart:convert';
 import 'dart:math';
 import 'package:card_settings/card_settings.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar_api;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -55,6 +57,13 @@ class _HomePageState extends State<HomePage> {
   static final int _startTimeDefault = 8;
   static final int _endTimeDefault = 22;
 
+  static final String _accuweatherUrl =
+    'http://apidev.accuweather.com/forecasts/v1/hourly/240hour/349727?'
+    'apikey=4bcffe798a234fd1a7eae74871328918';
+
+  static final List<int> _goodWeatherNum = [
+    1, 2, 3, 4, 5, 6, 7, 8, 33, 34, 35, 36];
+
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
       'profile',
@@ -77,6 +86,7 @@ class _HomePageState extends State<HomePage> {
   List<List<DateTime>> _slots = [];
 
   List<DateTime> _schedule = [];
+  List<String> _weather = [];
 
   _loadPreference() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -129,9 +139,26 @@ class _HomePageState extends State<HomePage> {
     print("signed out");
   }
 
+  Map<DateTime, dynamic> _processWeatherResponse(
+    http.Response weatherResponse) {
+    var responseBody = json.decode(weatherResponse.body);
+    Map<DateTime, dynamic> res = {};
+    try {
+      for (final hourlyForecast in responseBody) {
+        res[DateTime.parse(
+          hourlyForecast['DateTime']).toUtc()] = hourlyForecast;
+      }
+    } catch (error) {
+      print(error.toString());
+    }
+    return res;
+  }
+
   _showSchedule() async {
+    Future<http.Response> weatherFuture = http.get(_accuweatherUrl);
     setState(() {
       _schedule = [];
+      _weather = [];
     });
     final authHeaders = await _googleSignIn.currentUser.authHeaders;
     final httpClient = GoogleHttpClient(authHeaders);
@@ -145,6 +172,10 @@ class _HomePageState extends State<HomePage> {
 
     List<List<DateTime>> slots = [];
 
+    http.Response weatherResponse = await weatherFuture;
+    Map<DateTime, dynamic> weatherDict = _processWeatherResponse(
+      weatherResponse);
+
     for (int i = 0; i < 7; i++) {
       calendar_api.Events events = await calendar_api.CalendarApi(
         httpClient).events.list(
@@ -157,6 +188,7 @@ class _HomePageState extends State<HomePage> {
       List<DateTime> curSlots = _generateDailySchedule(
         startDate.toUtc().add(Duration(days: i)),
         events,
+        weatherDict,
       );
       if (curSlots.length > 0) {
         slots.add(curSlots);
@@ -168,16 +200,19 @@ class _HomePageState extends State<HomePage> {
       _slots = slots;
     });
 
-    _displaySchedule();
+    _displaySchedule(weatherDict);
   }
 
   List<DateTime> _generateDailySchedule(
-    DateTime curDate, calendar_api.Events events) {
+    DateTime curDate,
+    calendar_api.Events events,
+    Map<DateTime, dynamic> weatherDict) {
     List<DateTime> res = [];
     DateTime curDateTime = curDate.add(Duration(hours: _startTime));
     while (curDateTime.add(Duration(minutes: _length)).isBefore(
       curDate.add(Duration(hours: _endTime)))) {
-      if (_isFree(curDateTime, events) == true) {
+      if (_isFree(curDateTime, events) &&
+        (_inside || _isGoodWeather(curDateTime, weatherDict))) {
         res.add(curDateTime);
       }
       curDateTime = curDateTime.add(Duration(minutes: 5));
@@ -211,18 +246,47 @@ class _HomePageState extends State<HomePage> {
     return true;
   }
 
-  _displaySchedule() {
+  bool _isGoodWeather(
+    DateTime curDateTime, Map<DateTime, dynamic> weatherDict) {
+    DateTime key = _weatherDictKey(curDateTime);
+    if (weatherDict.containsKey(key)
+      && !_goodWeatherNum.contains(weatherDict[key]['WeatherIcon'])) {
+      return false;
+    }
+    return true;
+  }
+
+  DateTime _weatherDictKey(DateTime curDateTime) {
+    return DateTime(
+      curDateTime.year,
+      curDateTime.month,
+      curDateTime.day,
+      curDateTime.hour).toUtc();
+  }
+
+  _displaySchedule(Map<DateTime, dynamic> weatherDict) {
     var rnd = Random(DateTime.now().millisecondsSinceEpoch);
-    List<DateTime> res = [];
+    List<DateTime> resSchedule = [];
+    List<String> resWeather = [];
     List<List<DateTime>> slots = _slots;
     slots.shuffle();
     for (int i = 0; i < min(_freq, slots.length); i++) {
-      res.add(slots[i][rnd.nextInt(slots[i].length)]);
+      resSchedule.add(slots[i][rnd.nextInt(slots[i].length)]);
+      DateTime key = _weatherDictKey(resSchedule.last);
+      if (weatherDict.containsKey(key)) {
+        resWeather.add(
+          weatherDict[key]['IconPhrase']
+            + ', '
+            + weatherDict[key]['Temperature']['Value'].toInt().toString()
+            + '°F'
+        );
+      }
     }
-    res.sort();
-    res.forEach((dateTime) => print(dateTime.toLocal()));
+    resSchedule.sort();
+    resSchedule.forEach((dateTime) => print(dateTime.toLocal()));
     setState(() {
-      _schedule = res;
+      _schedule = resSchedule;
+      _weather = resWeather;
     });
   }
 
@@ -333,20 +397,27 @@ class _HomePageState extends State<HomePage> {
     );
     var MEd_formatter = DateFormat('MEd');
     var jm_formatter = DateFormat('jm');
-    _schedule.forEach((DateTime dateTime) {
+    for (int i = 0; i < _schedule.length; i++) {
+      final dateTime = _schedule[i];
+      String label = MEd_formatter.format(dateTime.toLocal())
+        + ', '
+        + jm_formatter.format(dateTime.toLocal())
+        + ' - '
+        + jm_formatter.format(
+          dateTime.toLocal().add(Duration(minutes: _length)));
+      if (_weather.length == _schedule.length) {
+        label += '\n' + (' ' * ((label.length - _weather[i].length - 1))) + _weather[i];
+      }
       children.add(
         CardSettingsButton(
-          label: MEd_formatter.format(dateTime.toLocal())
-            + ', '
-            + jm_formatter.format(dateTime.toLocal())
-            + ' - '
-            + jm_formatter.format(
-              dateTime.toLocal().add(Duration(minutes: _length))),
+          label: label,
           backgroundColor: Colors.white,
           onPressed: null,
+          bottomSpacing: 1.0,
         )
       );
-    });
+
+    }
     children.add(
       CardSettingsButton(
         label: _schedule.length > 0 ? 'Reschedule' : 'Go Schedule!',
