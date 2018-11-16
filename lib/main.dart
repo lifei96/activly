@@ -95,6 +95,8 @@ class _HomePageState extends State<HomePage> {
       _freq = (prefs.getInt(_freqName) ?? _freqDefault);
       _length = (prefs.getInt(_lengthName) ?? _lengthDefault);
       _reminder = (prefs.getInt(_reminderName) ?? _reminderDefault);
+      _startTime = (prefs.getInt(_startTimeName) ?? _startTimeDefault);
+      _endTime = (prefs.getInt(_endTimeName) ?? _endTimeDefault);
     });
     print('preference loaded');
   }
@@ -105,6 +107,8 @@ class _HomePageState extends State<HomePage> {
     prefs.setInt(_freqName, _freq);
     prefs.setInt(_lengthName, _length);
     prefs.setInt(_reminderName, _reminder);
+    prefs.setInt(_startTimeName, _startTime);
+    prefs.setInt(_endTimeName, _endTime);
     print('preference saved');
   }
 
@@ -566,6 +570,30 @@ class _HomePageState extends State<HomePage> {
             onChanged: (int value) {
               setState(() {
                 _reminder = value;
+              });
+            },
+          ),
+          CardSettingsInt(
+            label: 'Earliest Time',
+            key: Key('int_earliest'),
+            initialValue: _startTime,
+            unitLabel: "o'clock",
+            maxLength: 2,
+            onChanged: (int value) {
+              setState(() {
+                _startTime = value;
+              });
+            },
+          ),
+          CardSettingsInt(
+            label: 'Latest Time',
+            key: Key('int_latest'),
+            initialValue: _endTime,
+            unitLabel: "o'clock",
+            maxLength: 2,
+            onChanged: (int value) {
+              setState(() {
+                _endTime = value;
               });
             },
           ),
