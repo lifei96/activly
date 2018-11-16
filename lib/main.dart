@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:card_settings/card_settings.dart';
 import 'package:googleapis/calendar/v3.dart' as calendar_api;
 import 'package:google_sign_in/google_sign_in.dart';
@@ -17,14 +18,6 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Activ.ly',
       theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // Try running your application with "flutter run". You'll see the
-        // application has a blue toolbar. Then, without quitting the app, try
-        // changing the primarySwatch below to Colors.green and then invoke
-        // "hot reload" (press "r" in the console where you ran "flutter run",
-        // or press Run > Flutter Hot Reload in IntelliJ). Notice that the
-        // counter didn't reset back to zero; the application is not restarted.
         primaryColor: Colors.orange[800],
         accentColor: Colors.orange[700],
         backgroundColor: Colors.white,
@@ -51,11 +44,15 @@ class _HomePageState extends State<HomePage> {
   static final String _freqName = 'freq';
   static final String _lengthName = 'length';
   static final String _reminderName = 'reminder';
+  static final String _startTimeName = 'start_time';
+  static final String _endTimeName = 'end_time';
 
   static final bool _insideDefault = false;
   static final int _freqDefault = 5;
   static final int _lengthDefault = 60;
   static final int _reminderDefault = 30;
+  static final int _startTimeDefault = 8;
+  static final int _endTimeDefault = 22;
 
   final GoogleSignIn _googleSignIn = GoogleSignIn(
     scopes: [
@@ -73,6 +70,10 @@ class _HomePageState extends State<HomePage> {
   int _freq = _freqDefault;
   int _length = _lengthDefault;
   int _reminder = _reminderDefault;
+  int _startTime = _startTimeDefault;
+  int _endTime = _endTimeDefault;
+
+  List<List<DateTime>> _slots = [];
 
   _loadPreference() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -136,24 +137,84 @@ class _HomePageState extends State<HomePage> {
       startDateTime.day,
     );
 
-    print('startDate: $startDate');
-    print(startDate.timeZoneName);
+    List<List<DateTime>> slots = [];
 
     for (int i = 0; i < 7; i++) {
-      calendar_api.CalendarApi(httpClient).events.list(
+      calendar_api.Events events = await calendar_api.CalendarApi(
+        httpClient).events.list(
         'primary',
         singleEvents: true,
         orderBy: "startTime",
         timeMin: startDate.toUtc().add(Duration(days: i)),
         timeMax: startDate.toUtc().add(Duration(days: i + 1))
-      ).then((calendar_api.Events events) {
-        print(events.items.length);
-        events.items.forEach((calendar_api.Event event) {
-          print(event.summary);
-          print(event.start.dateTime.toLocal());
-        });
-      }).catchError((calendar_api.Error error) => print(error.toString()));
+      );
+      List<DateTime> curSlots = _generateDailySchedule(
+        startDate.toUtc().add(Duration(days: i)),
+        events,
+      );
+      if (curSlots.length > 0) {
+        slots.add(curSlots);
+        print(curSlots.length);
+      }
     }
+
+    setState(() {
+      _slots = slots;
+    });
+
+    _displaySchedule();
+  }
+
+  List<DateTime> _generateDailySchedule(
+    DateTime curDate, calendar_api.Events events) {
+    List<DateTime> res = [];
+    DateTime curDateTime = curDate.add(Duration(hours: _startTime));
+    while (curDateTime.add(Duration(minutes: _length)).isBefore(
+      curDate.add(Duration(hours: _endTime)))) {
+      if (_isFree(curDateTime, events) == true) {
+        res.add(curDateTime);
+      }
+      curDateTime = curDateTime.add(Duration(minutes: 5));
+    }
+    return res;
+  }
+
+  bool _isFree(DateTime curDateTime, calendar_api.Events events) {
+    for(final event in events.items) {
+      if (event.start.dateTime.compareTo(curDateTime) >= 0
+        && event.start.dateTime.compareTo(
+          curDateTime.add(Duration(minutes: _length))) <= 0) {
+        return false;
+      }
+      if (event.end.dateTime.compareTo(curDateTime) >= 0
+        && event.end.dateTime.compareTo(
+          curDateTime.add(Duration(minutes: _length))) <= 0) {
+        return false;
+      }
+      if (curDateTime.compareTo(event.start.dateTime) >= 0
+        && curDateTime.compareTo(event.end.dateTime) <= 0) {
+        return false;
+      }
+      if (curDateTime.add(Duration(minutes: _length)).compareTo(
+        event.start.dateTime) >= 0
+        && curDateTime.add(Duration(minutes: _length)).compareTo(
+          event.end.dateTime) <= 0) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  _displaySchedule() {
+    var rnd = Random(DateTime.now().millisecondsSinceEpoch);
+    List<DateTime> res = [];
+    List<List<DateTime>> slots = _slots;
+    slots.shuffle();
+    for (int i = 0; i < min(_freq, slots.length); i++) {
+      res.add(slots[i][rnd.nextInt(slots[i].length)]);
+    }
+    res.sort();
+    res.forEach((dateTime) => print(dateTime.toLocal()));
   }
 
   @override
@@ -173,12 +234,6 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance
-    // as done by the _increment method above.
-    // The Flutter framework has been optimized to make rerunning
-    // build methods fast, so that you can just rebuild anything that
-    // needs updating rather than having to individually change
-    // instances of widgets.
     return DefaultTabController(
       length: 3,
       child: Scaffold(
@@ -210,7 +265,8 @@ class _HomePageState extends State<HomePage> {
       child: CardSettings(
         children: <Widget>[
           CardSettingsHeader(
-            label: '${(signedIn ? _currentUser.displayName + '\'s ' : '')}Calendar',
+            label:
+            '${(signedIn ? _currentUser.displayName + '\'s ' : '')}Calendar',
           ),
           CardSettingsButton(
             label: 'Current account: ${(signedIn ? _currentUser.email : '')}',
