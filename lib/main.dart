@@ -4,6 +4,7 @@ import 'package:googleapis/calendar/v3.dart' as calendar_api;
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'google_http_client.dart';
@@ -75,6 +76,8 @@ class _HomePageState extends State<HomePage> {
 
   List<List<DateTime>> _slots = [];
 
+  List<DateTime> _schedule = [];
+
   _loadPreference() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -127,6 +130,9 @@ class _HomePageState extends State<HomePage> {
   }
 
   _showSchedule() async {
+    setState(() {
+      _schedule = [];
+    });
     final authHeaders = await _googleSignIn.currentUser.authHeaders;
     final httpClient = GoogleHttpClient(authHeaders);
 
@@ -215,6 +221,9 @@ class _HomePageState extends State<HomePage> {
     }
     res.sort();
     res.forEach((dateTime) => print(dateTime.toLocal()));
+    setState(() {
+      _schedule = res;
+    });
   }
 
   @override
@@ -316,24 +325,44 @@ class _HomePageState extends State<HomePage> {
 
   Form createWorkoutTabBarView() {
     var signedIn = _currentUser == null? false : true;
+    List<Widget> children = [];
+    children.add(
+      CardSettingsHeader(
+        label: 'Workout Schedule',
+      )
+    );
+    var MEd_formatter = DateFormat('MEd');
+    var jm_formatter = DateFormat('jm');
+    _schedule.forEach((DateTime dateTime) {
+      children.add(
+        CardSettingsButton(
+          label: MEd_formatter.format(dateTime.toLocal())
+            + ', '
+            + jm_formatter.format(dateTime.toLocal())
+            + ' - '
+            + jm_formatter.format(
+              dateTime.toLocal().add(Duration(minutes: _length))),
+          backgroundColor: Colors.white,
+          onPressed: null,
+        )
+      );
+    });
+    children.add(
+      CardSettingsButton(
+        label: _schedule.length > 0 ? 'Reschedule' : 'Go Schedule!',
+        backgroundColor: Colors.orange[700],
+        textColor: Colors.white,
+        bottomSpacing: 4.0,
+        onPressed: () {
+          _showSchedule();
+        },
+        visible: signedIn,
+      )
+    );
     return Form(
       key: Key('workout_form'),
       child: CardSettings(
-        children: <Widget>[
-          CardSettingsHeader(
-            label: 'Workout Schedule',
-          ),
-          CardSettingsButton(
-            label: 'Go Schedule!',
-            backgroundColor: Colors.white,
-            textColor: Colors.orange[700],
-            bottomSpacing: 4.0,
-            onPressed: () {
-              _showSchedule();
-            },
-            visible: signedIn,
-          ),
-        ],
+        children: children,
       ),
     );
   }
