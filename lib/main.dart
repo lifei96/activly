@@ -290,6 +290,48 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
+  _addCalendar() async {
+    final authHeaders = await _googleSignIn.currentUser.authHeaders;
+    final httpClient = GoogleHttpClient(authHeaders);
+    for (int i = 0; i < _schedule.length; i++) {
+      calendar_api.Event event = calendar_api.Event.fromJson(
+        {
+          'summary': 'Workout with Activ.ly',
+          'description': 'Workout powered by Activ.ly.',
+          'start': {
+            'dateTime': _schedule[i].toLocal().toIso8601String(),
+            'timeZone': _schedule[i].toLocal().timeZoneName,
+          },
+          'end': {
+            'dateTime': _schedule[i].add(
+              Duration(minutes: _length)).toLocal().toIso8601String(),
+            'timeZone': _schedule[i].toLocal().timeZoneName,
+          },
+          'attendees': [
+            {'email': _currentUser.email},
+            {'email': 'activly@googlegroups.com'},
+          ],
+          'reminders': {
+            'useDefault': false,
+            'overrides': [
+              {'method': 'email', 'minutes': _reminder},
+              {'method': 'popup', 'minutes': _reminder},
+            ],
+          },
+        }
+      );
+      calendar_api.Event insertedEvent = await calendar_api
+        .CalendarApi(httpClient).events.insert(
+        event,
+        'primary',
+        sendNotifications: true,
+      );
+      if (insertedEvent != null) {
+        print('inserted ${_schedule[i].toLocal().toIso8601String()}');
+      }
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -395,6 +437,28 @@ class _HomePageState extends State<HomePage> {
         label: 'Workout Schedule',
       )
     );
+    if (!signedIn) {
+      children.add(
+        CardSettingsButton(
+          label: 'Please sign in first!',
+          backgroundColor: Colors.white,
+          onPressed: null,
+          bottomSpacing: 1.0,
+          visible: !signedIn,
+        )
+      );
+    }
+    if (_schedule.length <= 0) {
+      children.add(
+        CardSettingsButton(
+          label: 'You don\'t have schedule currently',
+          backgroundColor: Colors.white,
+          onPressed: null,
+          bottomSpacing: 1.0,
+          visible: signedIn,
+        )
+      );
+    }
     var MEd_formatter = DateFormat('MEd');
     var jm_formatter = DateFormat('jm');
     for (int i = 0; i < _schedule.length; i++) {
@@ -416,12 +480,25 @@ class _HomePageState extends State<HomePage> {
           bottomSpacing: 1.0,
         )
       );
-
+    }
+    if (_schedule.length > 0) {
+      children.add(
+        CardSettingsButton(
+          label: 'Add to Google Calendar!',
+          backgroundColor: Colors.orange[700],
+          textColor: Colors.white,
+          bottomSpacing: 4.0,
+          onPressed: () {
+            _addCalendar();
+          },
+          visible: signedIn,
+        )
+      );
     }
     children.add(
       CardSettingsButton(
-        label: _schedule.length > 0 ? 'Reschedule' : 'Go Schedule!',
-        backgroundColor: Colors.orange[700],
+        label: _schedule.length > 0 ? 'Reschedule Now!' : 'Schedule Now!',
+        backgroundColor: Colors.orange[500],
         textColor: Colors.white,
         bottomSpacing: 4.0,
         onPressed: () {
