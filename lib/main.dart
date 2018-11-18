@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
   static final String _startTimeName = 'start_time';
   static final String _endTimeName = 'end_time';
 
-  static final bool _insideDefault = false;
+  static final bool _insideDefault = true;
   static final int _freqDefault = 5;
   static final int _lengthDefault = 60;
   static final int _reminderDefault = 30;
@@ -528,12 +528,12 @@ class _HomePageState extends State<HomePage> {
             label: 'Workout Preference',
           ),
           CardSettingsSwitch(
-            label: 'Inside?',
-            key: Key('switch_inside'),
-            initialValue: _inside,
+            label: 'Outside?',
+            key: Key('switch_outside'),
+            initialValue: !_inside,
             onChanged: (bool value) {
               setState(() {
-                _inside = value;
+                _inside = !value;
               });
             },
           ),
