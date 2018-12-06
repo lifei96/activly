@@ -1,8 +1,3 @@
 # Activ.ly
 
-Activ.ly app repo
-
-## Getting Started
-
-For help getting started with Flutter, view our online
-[documentation](https://flutter.io/).
+Activ.ly APP
